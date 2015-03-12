@@ -1,0 +1,236 @@
+### ZMIENNE PROGRAMU ###
+
+## zmienne db pass
+passnewDBroot="root1234DB"
+passoldDBroot=""
+passDBredmine="redmine1234DB"
+
+## zmienne redmine tar
+file_tar_redmine=$(curl http://www.redmine.org/releases/ |& grep -oe ">redmine.*.tar.gz<"|tail -n 1|sed -e 's/>//' -e 's/<//')
+#file_tar_redmine="redmine-2.6.2.tar.gz"
+
+if [ $file_tar_redmine = "" ]; then echo file_tar_redmine ERROR; exit 1; fi
+dir_redmine="$(echo $file_tar_redmine | sed 's/.tar.gz//')/"
+path_redmine="/var/www/${dir_redmine}"
+path_www="/var/www/"
+url_path_redmine="http://www.redmine.org/releases/"
+url_tar_redmine="${url_path_redmine}${file_tar_redmine}"
+url_server_ip="10.14.0.209"
+setdb="/usr/sh/srv-inst-redmine-setdb.sh"
+
+## log passenger
+adr_log_passenger="/tmp/passenger.out"
+
+### MAIN ###
+title Instalacja serwisu www redmine
+
+banner "I N S T A L A C J A"
+
+head START
+
+head YUM - Installing packages...
+run yum -y install apr-devel apr-util-devel curl-devel gcc gcc-c++ git httpd httpd-devel ImageMagick-devel mariadb-devel mariadb-server nano postfix ruby-devel tar wget mod_ssl.x86_64
+
+head SELINUX - Turning off...
+run setenforce 0
+
+head FIREWALL - Setting rules...
+run firewall-cmd --zone=FedoraServer --add-port=25/tcp
+run firewall-cmd --permanent --zone=FedoraServer --add-port=25/tcp
+run firewall-cmd --zone=FedoraServer --add-port=3000/tcp
+run firewall-cmd --permanent --zone=FedoraServer --add-port=3000/tcp
+run firewall-cmd --zone=FedoraServer --add-service=http
+run firewall-cmd --permanent --zone=FedoraServer --add-service=http
+run firewall-cmd --zone=FedoraServer --add-service=https
+run firewall-cmd --permanent --zone=FedoraServer --add-service=https
+
+head SERVICES - Starting...
+run systemctl start httpd mariadb postfix
+run systemctl enable httpd mariadb postfix
+
+head MARIADB - Armouring...
+run  $setdb $passnewDBroot $passoldDBroot
+
+head MARIADB - Creating database...
+run "echo \"
+	CREATE DATABASE redmine CHARACTER SET utf8;
+	CREATE USER 'redmine'@'localhost' IDENTIFIED BY '$passDBredmine';
+	GRANT ALL PRIVILEGES ON redmine.* TO 'redmine'@'localhost';
+	quit\" | mysql -u root --password=\"$passnewDBroot\""
+
+head REDMINE - Downloading app...
+run cd /tmp
+run wget $url_tar_redmine
+run mkdir -p $path_redmine
+run tar -xzf $file_tar_redmine -C $path_www
+
+head REDMINE - Configuring production...
+run cd ${path_redmine}config/
+run "echo \"
+production:
+  adapter: mysql2
+  database: redmine
+  host: localhost
+  username: redmine
+  password: $passDBredmine
+  encoding: utf8
+\" > ${path_redmine}config/database.yml"
+
+head REDMINE - Configuring dirs structures...
+run cd ${path_redmine}
+run mkdir -p ${path_redmine}public/plugin_assets
+run chown apache:apache -R ${path_redmine}files ${path_redmine}log ${path_redmine}public/plugin_assets ${path_redmine}tmp
+
+head REDMINE - Configuring dirs structures for SELinux...
+run chcon -R --reference=/var/www/html ${path_redmine}
+run chcon -t httpd_sys_content_rw_t -R ${path_redmine}files ${path_redmine}log ${path_redmine}public/plugin_assets ${path_redmine}tmp
+
+head RUBY - Solving gem troubles...
+run cd ${path_redmine}
+run yum -y install libxslt-devel zlib-devel.i686 libxml2-devel
+run gem install nokogiri -- --use-system-libraries
+run gem install bundler
+run "/usr/local/bin/bundle install --without development test"
+
+head RUBY - Makeing mysql2...
+run mkdir -p /usr/local/lib64/ruby/site_ruby/mysql2
+run "cd /usr/local/share/gems/gems/mysql2*/ext/mysql2/"
+run ruby extconf.rb
+run make
+run make install
+
+head RUBY - Makeing RMagic...
+run "cd /usr/local/share/gems/gems/rmagick*/ext/RMagick/"
+run ruby extconf.rb
+run make
+run make install
+
+head RUBY - Configuring Redmine Enviroment...
+run cd ${path_redmine}
+run /usr/local/bin/rake generate_secret_token
+run "RAILS_ENV=production /usr/local/bin/rake db:migrate"
+run "RAILS_ENV=production /usr/local/bin/rake redmine:load_default_data"
+
+head APACHE - Instaling module passenger...
+run gem install passenger
+run "/usr/local/bin/passenger-install-apache2-module --auto | tee ${adr_log_passenger}"
+vpassenger=($(grep PassengerRoot ${adr_log_passenger} | cut -d/ --output-delimiter=' ' -f 1-))
+vpassenger=${vpassenger[-1]}
+run "echo vpassenger=${vpassenger}; if [ -z "$vpassenger" ]; then false; fi"
+
+head APACHE - Configuring module passenger...
+run "echo \"
+LoadModule passenger_module /usr/local/share/gems/gems/${vpassenger}/buildout/apache2/mod_passenger.so
+<IfModule mod_passenger.c> 
+   PassengerDefaultUser apache
+   PassengerRoot /usr/local/share/gems/gems/${vpassenger}
+   PassengerDefaultRuby /usr/bin/ruby
+</IfModule>\" > /etc/httpd/conf.modules.d/passenger.conf"
+
+head APACHE - Configuring Redmine virtualhost...
+run "echo \"
+#<VirtualHost *:80>
+#   ServerName www.website.com
+#
+#   DocumentRoot /var/www/${dir_redmine}/public
+#
+#   <Directory /var/www/${dir_redmine}/public>
+#      # This relaxes Apache security settings.
+#      AllowOverride all
+#      # MultiViews must be turned off.
+#      Options -MultiViews
+#      # Uncomment this if you are on Apache >= 2.4:
+#      Require all granted
+#   </Directory>
+#</VirtualHost>
+
+<VirtualHost *:80>
+        ServerName www.website.com
+        Redirect permanent / https://${url_server_ip}
+</VirtualHost>
+
+<VirtualHost *:443>
+        ServerName www.website.com
+        ServerAdmin your_domain@domain.com
+        DocumentRoot /var/www/${dir_redmine}/public/
+        ErrorLog logs/redmine_error_log
+        SSLEngine on
+        SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+        SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+        #SSLCertificateKeyFile /etc/pki/tls/private/ca.key
+        #SSLCertificateFile /etc/pki/tls/certs/ca.crt
+        <Directory \"/var/www/${dir_redmine}/public/\">
+            Options Indexes ExecCGI FollowSymLinks
+            Order allow,deny
+            Allow from all
+            AllowOverride all
+      </Directory>
+</VirtualHost>
+
+\" > /etc/httpd/conf.d/redmine.conf"
+
+head REDMINE - Configurin mail...
+#run myhostname="mail.website.com"
+run setsebool httpd_can_network_connect 1
+run "echo \"
+default:
+  # Outgoing emails configuration (see examples above)
+  email_delivery:
+    delivery_method: :async_smtp\" > ${path_redmine}config/configuration.yml"
+
+head HTTPD - Restarting...
+run systemctl restart httpd
+
+head SELINUX - Turning on...
+run setenforce 1
+
+title Instalacja dodatkow
+head Redmine Contacts - www.redminecrm.com
+head Nie działa z wersją 3
+#cd ${path_redmine}plugins
+#wget http://www.redminecrm.com/license_manager/15889/redmine_contacts-3_4_4-light.zip
+#yum install lrzsz <- aplikacja linuxa obslugująca protokol modemow wykorzystywany przez SXshell do wstrzykiwania plikow do konsoli
+#unzip redmine_contacts-3_4_4-light.zip
+#cd ${path_redmine}
+#
+##Install dependent ruby gems by following command:
+#bundle install --without development test
+#
+##Migrate database and copy assets by following command:
+#bundle exec rake redmine:plugins NAME=redmine_contacts RAILS_ENV=production
+#
+##You now need to restart Redmine so that it shows the newly installed plugin in the list of installed plugins ("Administration -> Plugins").
+##Go to "Administration -> Contacts" and setup plugin global settings.
+
+head Redmine checklist - www.redminecrm.com
+run "echo \"
+#cd ${path_redmine}plugins/
+#trzeba sciagnac recznie
+#git clone https://github.com/go2null/redmine_issue_checklist #error - podzczas migracji
+#wget http://www.redminecrm.com/license_manager/17999/redmine_checklists-3_0_3-light.zip #error - bez logowania nie sciagnie
+#unzip *.zip
+#cd ${path_redmine}
+#bundle exec rake redmine:plugins NAME=redmine_checklists RAILS_ENV=production
+\"
+"
+
+head redmine_advanced_roadmap_v2
+run cd ${path_redmine}plugins/
+run git clone https://github.com/Coren/redmine_advanced_roadmap_v2
+run mv redmine_advanced_roadmap_v2 advanced_roadmap_v2
+run cd ${path_redmine}
+run bundle exec rake redmine:plugins NAME=advanced_roadmap_v2 RAILS_ENV=production
+
+head Sidebare hide
+run cd ${path_redmine}plugins/
+run git clone https://github.com/bdemirkir/sidebar_hide.git
+
+head HTTPD - Restarting...
+run systemctl restart httpd
+
+head Koniec
+
+banner "L O G I"
+kolor y $adr_log_file
+
+cat $adr_log_file
