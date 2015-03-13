@@ -203,23 +203,22 @@ head Nie działa z wersją 3
 ##Go to "Administration -> Contacts" and setup plugin global settings.
 
 head Redmine checklist - www.redminecrm.com
-run "echo \"
-#cd ${path_redmine}plugins/
+echo "
+cd ${path_redmine}plugins/
 #trzeba sciagnac recznie
-#git clone https://github.com/go2null/redmine_issue_checklist #error - podzczas migracji
-#wget http://www.redminecrm.com/license_manager/17999/redmine_checklists-3_0_3-light.zip #error - bez logowania nie sciagnie
-#unzip *.zip
-#cd ${path_redmine}
-#bundle exec rake redmine:plugins NAME=redmine_checklists RAILS_ENV=production
-\"
+git clone https://github.com/go2null/redmine_issue_checklist #error - podzczas migracji
+wget http://www.redminecrm.com/license_manager/17999/redmine_checklists-3_0_3-light.zip #error - bez logowania nie sciagnie
+unzip *.zip
+cd ${path_redmine}
+bundle exec rake redmine:plugins NAME=redmine_checklists RAILS_ENV=production
 "
 
-head redmine_advanced_roadmap_v2
-run cd ${path_redmine}plugins/
-run git clone https://github.com/Coren/redmine_advanced_roadmap_v2
-run mv redmine_advanced_roadmap_v2 advanced_roadmap_v2
-run cd ${path_redmine}
-run bundle exec rake redmine:plugins NAME=advanced_roadmap_v2 RAILS_ENV=production
+#head redmine_advanced_roadmap_v2
+#run cd ${path_redmine}plugins/
+#run git clone https://github.com/Coren/redmine_advanced_roadmap_v2
+#run mv redmine_advanced_roadmap_v2 advanced_roadmap_v2
+#run cd ${path_redmine}
+#run bundle exec rake redmine:plugins NAME=advanced_roadmap_v2 RAILS_ENV=production
 
 head Sidebare hide
 run cd ${path_redmine}plugins/
