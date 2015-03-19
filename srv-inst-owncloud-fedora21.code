@@ -99,11 +99,11 @@ ErrorLog    \"/var/log/httpd/company-${srv_name}-error.log\"
 
 \" > /etc/httpd/conf.d/${srv_name}.conf"
 
-head BUG1 - Niedzialajace pluginy
-run sed -i 's/curl_setopt($curl, CURLOPT_USERAGENT, self::USER_AGENT);/curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);/' /var/www/html/owncloud/lib/private/httphelper.php
-
 head HTTPD - Restarting...
 run systemctl restart httpd
 
 head KONIEC
+
+head BUG1 - Niedzialajace pluginy
+echo "sed -i 's/curl_setopt(\$curl, CURLOPT_USERAGENT, self::USER_AGENT);/curl_setopt(\$curl, CURLOPT_SSL_VERIFYPEER, false);/' /var/www/html/owncloud/lib/private/httphelper.php"
 
