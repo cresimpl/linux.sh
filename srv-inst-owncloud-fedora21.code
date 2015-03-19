@@ -51,7 +51,7 @@ run systemctl enable httpd.service mariadb.service
 head Download app and rights
 #run git clone https://github.com/owncloud/core /var/www/html/
 mkdir -p ${apache_path_www_dir}/${srv_name}
-run cd ${apache_path_www_dir}
+run cd ${apache_path_www_dir}/${srv_name}
 run wget https://download.owncloud.com/download/community/setup-owncloud.php
 run chown -R apache.apache ${apache_path_www_dir}
 
@@ -98,6 +98,9 @@ ErrorLog    \"/var/log/httpd/company-${srv_name}-error.log\"
 </Virtualhost>
 
 \" > /etc/httpd/conf.d/${srv_name}.conf"
+
+head BUG1 - Niedzialajace pluginy
+run sed -i 's/curl_setopt($curl, CURLOPT_USERAGENT, self::USER_AGENT);/curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);/' /var/www/html/owncloud/lib/private/httphelper.php
 
 head HTTPD - Restarting...
 run systemctl restart httpd
