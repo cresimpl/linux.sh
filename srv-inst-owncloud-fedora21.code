@@ -31,6 +31,9 @@ head start
 head Instalacja pakietow
 run yum install httpd php php-mysql mariadb-server mariadb sqlite php-dom php-mbstring php-gd php-pecl-zip php-pdo wget mod_ssl.x86_64 -y
 
+head SELINUX - Turning off...
+run setenforce 0
+
 head Set SELinux to allow OwnCloud to write the data
 run setsebool -P httpd_unified 1
 
