@@ -49,8 +49,11 @@ head Auto start
 run systemctl enable httpd.service mariadb.service
 
 head Download app and rights
-run git clone https://github.com/owncloud/core /var/www/html/
-run chown -R apache.apache /var/www/html/
+#run git clone https://github.com/owncloud/core /var/www/html/
+mkdir -p ${apache_path_www_dir}/${srv_name}
+run cd ${apache_path_www_dir}
+run wget https://download.owncloud.com/download/community/setup-owncloud.php
+run chown -R apache.apache ${apache_path_www_dir}
 
 head MARIADB - Armouring...
 run  $setdb $passnewDBroot $passoldDBroot
@@ -61,6 +64,9 @@ run "echo \"
         CREATE USER '$db_user'@'localhost' IDENTIFIED BY '$passDBuser';
         GRANT ALL PRIVILEGES ON $db_name.* TO '$db_user'@'localhost';
         quit\" | mysql -u root --password=\"$passnewDBroot\""
+
+head SSL - Keys and certs
+run openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/certs/mycert.key -out /etc/ssl/certs/mycert.crt
 
 head APACHE - Configuring Redmine virtualhost...
 run "echo \"
