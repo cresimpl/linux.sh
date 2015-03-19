@@ -1,0 +1,97 @@
+### ZMIENNE PROGRAMU ###
+
+srv_name="owncloud"
+
+## apache
+apache_vh_servername="company.example.co.uk"
+apache_path_www_dir="/var/www/html"
+
+## zmienne db pass
+passnewDBroot="root1234DB"
+passoldDBroot=""
+passDBuser="owncloud1234DB"
+
+db_name="owncloud"
+db_user="oc"
+
+setdb="/usr/sh/srv-inst-redmine-setdb.sh"
+
+## zmienne redmine tar
+#file_tar_redmine=$(curl http://www.redmine.org/releases/ |& grep -oe ">redmine.*.tar.gz<"|tail -n 1|sed -e 's/>//' -e 's/<//')
+#file_tar_redmine="redmine-2.6.2.tar.gz"
+
+
+### MAIN ###
+banner "I N S T A L A C J A"
+
+title Instalacja ownCloud 8 na Fedora 21
+
+head start
+
+head Instalacja pakietow
+run yum install httpd php php-mysql mariadb-server mariadb sqlite php-dom php-mbstring php-gd php-pecl-zip php-pdo wget mod_ssl.x86_64 -y
+
+head Set SELinux to allow OwnCloud to write the data
+run setsebool -P httpd_unified 1
+
+head Set Firewall
+run firewall-cmd --permanent --zone=FedoraServer --add-service=http
+run firewall-cmd --permanent --zone=FedoraServer --add-service=https
+run firewall-cmd --reload
+
+head Start services
+run systemctl start httpd.service mariadb.service
+
+head Auto start
+run systemctl enable httpd.service mariadb.service
+
+head Download app and rights
+run git clone https://github.com/owncloud/core /var/www/html/
+run chown -R apache.apache /var/www/html/
+
+head MARIADB - Armouring...
+run  $setdb $passnewDBroot $passoldDBroot
+
+head MARIADB - Creating database...
+run "echo \"
+        CREATE DATABASE $db_name CHARACTER SET utf8;
+        CREATE USER '$db_user'@'localhost' IDENTIFIED BY '$passDBuser';
+        GRANT ALL PRIVILEGES ON $db_name.* TO '$db_user'@'localhost';
+        quit\" | mysql -u root --password=\"$passnewDBroot\""
+
+head APACHE - Configuring Redmine virtualhost...
+run "echo \"
+
+<Virtualhost *:443>
+
+SSLEngine On
+SSLCipherSuite HIGH:MEDIUM
+SSLProtocol all -SSLv2
+SSLCertificateFile /etc/ssl/certs/mycert.crt
+SSLCertificateKeyFile /etc/ssl/certs/mycert.key
+
+ServerName \"$apache_vh_servername\"
+
+DocumentRoot \"${apache_path_www_dir}/${srv_name}\"
+
+
+CustomLog   \"/var/log/httpd/company-${srv_name}-access.log\" combined
+ErrorLog    \"/var/log/httpd/company-${srv_name}-error.log\"
+
+
+<Directory \"${apache_path_www_dir}/${srv_name}\">
+    Options Indexes FollowSymLinks MultiViews
+    AllowOverride All
+    Require all granted
+    Satisfy Any
+</Directory>
+
+</Virtualhost>
+
+\" > /etc/httpd/conf.d/${srv_name}.conf"
+
+head HTTPD - Restarting...
+run systemctl restart httpd
+
+head KONIEC
+
