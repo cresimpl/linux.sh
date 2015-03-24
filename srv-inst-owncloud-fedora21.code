@@ -113,7 +113,7 @@ run systemctl restart httpd
 head KONIEC
 
 head SET FIX - php.ini - always populate raw post data = -1
-echo "run sed -i 's/;always_populate_raw_post_data = -1/always_populate_raw_post_data = -1/' /etc/php.ini"
+echo "sed -i 's/;always_populate_raw_post_data = -1/always_populate_raw_post_data = -1/' /etc/php.ini"
 
 head BUG FIX - Niedzialajace pluginy polecane
 echo "sed -i 's/curl_setopt(\$curl, CURLOPT_USERAGENT, self::USER_AGENT);/curl_setopt(\$curl, CURLOPT_SSL_VERIFYPEER, false);/' /var/www/html/owncloud/lib/private/httphelper.php"
@@ -121,9 +121,12 @@ echo "sed -i 's/curl_setopt(\$curl, CURLOPT_USERAGENT, self::USER_AGENT);/curl_s
 head WWW Install info
 echo "
 
-
 db name = $db_name
 db user = $db_user
 $db_user pass = $passDBuser
+
+
+vi /var/log/service*.log
 "
 
+history -c
