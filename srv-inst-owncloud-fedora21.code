@@ -3,6 +3,7 @@
 srv_name="owncloud"
 url_server_ip="$(ip a|grep eth0 -B3|grep "inet "|cut -d" " -f6|cut -d/ -f1)"
 if [ -z ${url_server_ip} ]; then "echo brak zmiennej url_server_ip = $url_server_ip" ; exit 1; fi
+url_setup="https://${url_server_ip}/setup-owncloud.php"
 
 ## ssl
 ssl_crt_path="/etc/ssl/certs/mycert.crt"
@@ -127,12 +128,19 @@ head WWW Install info
 echo "
 
 WWW INSTALL SETS:
+_________________
 db name = $db_name
 db user = $db_user
 $db_user pass = $passDBuser
+----------
+$url_setup
+----------
 
 LOGS:
+_____
 cat /var/log/service*.log
+
+
 "
 
 history -c
