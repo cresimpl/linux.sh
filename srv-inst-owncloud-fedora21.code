@@ -1,6 +1,8 @@
 ### ZMIENNE PROGRAMU ###
 
 srv_name="owncloud"
+url_server_ip="$(ip a|grep eth0 -B3|grep "inet "|cut -d" " -f6|cut -d/ -f1)"
+if [ -z ${url_server_ip} ]; then "echo brak zmiennej url_server_ip = $url_server_ip" ; exit 1; fi
 
 ## apache
 apache_vh_servername="company.example.co.uk"
@@ -71,6 +73,12 @@ run openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/certs/m
 head APACHE - Configuring Redmine virtualhost...
 run "echo \"
 
+<VirtualHost *:80>
+        ServerName www.website.com
+        Redirect permanent / https://${url_server_ip}
+</VirtualHost>
+
+
 <Virtualhost *:443>
 
 SSLEngine On
@@ -104,6 +112,18 @@ run systemctl restart httpd
 
 head KONIEC
 
-head BUG1 - Niedzialajace pluginy
+head SET FIX - php.ini - always populate raw post data = -1
+echo "run sed -i 's/;always_populate_raw_post_data = -1/always_populate_raw_post_data = -1/' /etc/php.ini"
+
+head BUG FIX - Niedzialajace pluginy polecane
 echo "sed -i 's/curl_setopt(\$curl, CURLOPT_USERAGENT, self::USER_AGENT);/curl_setopt(\$curl, CURLOPT_SSL_VERIFYPEER, false);/' /var/www/html/owncloud/lib/private/httphelper.php"
+
+head WWW Install info
+echo "
+
+
+db name = $db_name
+db user = $db_user
+$db_user pass = $passDBuser
+"
 
