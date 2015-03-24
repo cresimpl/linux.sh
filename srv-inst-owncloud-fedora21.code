@@ -9,6 +9,12 @@ url_setup="https://${url_server_ip}/setup-owncloud.php"
 ssl_crt_path="/etc/ssl/certs/mycert.crt"
 ssl_key_path="/etc/ssl/certs/mycert.key"
 
+ssl_c  = "PL"
+ssl_st = "Pomorskie"
+ssl_l  = "Gdańsk"
+ssl_o  = "Company"
+ssl_cn = "exemple.com"
+
 ## apache
 apache_vh_servername="company.example.co.uk"
 apache_path_www_dir="/var/www/html"
@@ -73,7 +79,7 @@ run "echo \"
         quit\" | mysql -u root --password=\"$passnewDBroot\""
 
 head SSL - Keys and certs
-run openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout $ssl_key_path -out $ssl_crt_path
+run openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout $ssl_key_path -out $ssl_crt_path -subj "/C=${ssl_c}/ST=${ssl_st}/L=${ssl_l}/O=${ssl_o}/CN=${ssl_cn}"
 
 head APACHE - Configuring Redmine virtualhost...
 run "echo \"
