@@ -118,9 +118,6 @@ echo -e "____________________________"
 }
 
 # RUN #
-#run <cmd>
-#run <p1=save/add> <cmd1>
-#run <p1=tee> <p2=adr for tee> <cmd2>
 run() {
 cmd="$*"
 

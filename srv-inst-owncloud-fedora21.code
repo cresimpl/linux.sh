@@ -9,11 +9,11 @@ url_setup="https://${url_server_ip}/setup-owncloud.php"
 ssl_crt_path="/etc/ssl/certs/mycert.crt"
 ssl_key_path="/etc/ssl/certs/mycert.key"
 
-ssl_c  = "PL"
-ssl_st = "Pomorskie"
-ssl_l  = "Gdańsk"
-ssl_o  = "Company"
-ssl_cn = "exemple.com"
+ssl_c="PL"
+ssl_st="Pomorskie"
+ssl_l="Gdańsk"
+ssl_o="Company"
+ssl_cn="exemple.com"
 
 ## apache
 apache_vh_servername="company.example.co.uk"
